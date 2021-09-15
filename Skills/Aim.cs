@@ -30,8 +30,8 @@ namespace OsuDifficulty.Skills
             if (skill == 0 || deltaTime == 0 || radius == 0)
                 return 0;
 
-            double horizontalShift = Math.Abs(currentObject.X - lastObject.X);
-            double verticalShift = Math.Abs(currentObject.Y - lastObject.Y);
+            int horizontalShift = Math.Abs(currentObject.X - lastObject.X);
+            int verticalShift = Math.Abs(currentObject.Y - lastObject.Y);
 
             if (horizontalShift == 0 && verticalShift == 0)
             {

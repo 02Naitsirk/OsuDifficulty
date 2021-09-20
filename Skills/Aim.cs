@@ -21,9 +21,6 @@ namespace OsuDifficulty.Skills
         private static double CalculateHitProbability(HitObject currentObject, HitObject lastObject,
             HitObject? secondLastObject, double circleSize, double clockRate, double skill)
         {
-            // This can be set to 1 and give very similar results as if it were set to something very small. Don't know why.
-            const double integralTolerance = 1;
-
             double deltaTime = (currentObject.Time - lastObject.Time) / clockRate;
             double radius = 54.4 - 4.48 * circleSize;
 
@@ -69,15 +66,17 @@ namespace OsuDifficulty.Skills
 
             double Integrand(double x)
             {
-                return SpecialFunctions.Erf(Math.Sqrt((Math.Pow(radius, 2) - x * Math.Pow(verticalDeviation, 2)) /
-                                                      (2 * Math.Pow(horizontalDeviation, 2)))) * Math.Exp(-x / 2) /
-                       Math.Sqrt(x);
+                return SpecialFunctions.Erf(
+                    Math.Sqrt(0.5 * (radius * radius - x * verticalDeviation * verticalDeviation)) /
+                    horizontalDeviation) * Math.Exp(-0.5 * x) / Math.Sqrt(x);
             }
 
-            double integralResult = Integrate.OnClosedInterval(Integrand, 0, Math.Pow(radius / verticalDeviation, 2),
-                integralTolerance);
+            const double targetAbsoluteError = 1.0;
+            const double intervalBegin = 0;
+            double intervalEnd = radius * radius / verticalDeviation / verticalDeviation;
 
-            return integralResult / Math.Sqrt(2 * Math.PI);
+            return Integrate.OnClosedInterval(Integrand, intervalBegin, intervalEnd, targetAbsoluteError) /
+                   Math.Sqrt(2 * Math.PI);
         }
 
         private static double CalculateFcProbability(IReadOnlyList<HitObject> hitObjects, double circleSize,

@@ -9,7 +9,7 @@ namespace OsuDifficulty
         {
             const int goodCount = 0;
             const int mehCount = 0;
-            const int missCount = 1;
+            const int missCount = 0;
             const double comboProportion = 1;
 
             Console.WriteLine("\nProgram started.\n");

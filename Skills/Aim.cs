@@ -11,9 +11,10 @@ namespace OsuDifficulty.Skills
         private const double Scaling = 295;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
-        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize, double clockRate)
+        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize, double clockRate,
+            int missCount)
         {
-            double skillLevel = CalculateSkillLevel(hitObjects, circleSize, clockRate);
+            double skillLevel = CalculateSkillLevel(hitObjects, circleSize, clockRate, missCount);
             double starRating = Scaling * Math.Pow(skillLevel, StarRatingPower);
             return starRating;
         }
@@ -79,11 +80,35 @@ namespace OsuDifficulty.Skills
                    Math.Sqrt(2 * Math.PI);
         }
 
-        private static double CalculateFcProbability(IReadOnlyList<HitObject> hitObjects, double circleSize,
-            double clockRate, double skill)
+        /// <summary>
+        /// Finds the probability of obtaining at most <paramref name="missCount"/> misses given a skill level of <paramref name="skill"></paramref>
+        /// </summary>
+        private static double CalculateProbability(IReadOnlyList<HitObject> hitObjects, double circleSize,
+            double clockRate, double skill, int missCount)
         {
-            double fcProbability = 1;
+            if (missCount == 0)
+            {
+                double fcProbability = 1;
 
+                for (var i = 1; i < hitObjects.Count; i++)
+                {
+                    var currentObject = hitObjects[i];
+                    var lastObject = hitObjects[i - 1];
+                    var secondLastObject = i > 1 ? hitObjects[i - 2] : null;
+
+                    double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject,
+                        circleSize,
+                        clockRate, skill);
+
+                    fcProbability *= hitProbability;
+                }
+
+                return fcProbability;
+            }
+
+            // Use Poisson distribution to approximate a Poisson binomial distribution
+
+            double mean = 0;
             for (var i = 1; i < hitObjects.Count; i++)
             {
                 var currentObject = hitObjects[i];
@@ -93,22 +118,31 @@ namespace OsuDifficulty.Skills
                 double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject, circleSize,
                     clockRate, skill);
 
-                fcProbability *= hitProbability;
+                mean += 1 - hitProbability;
             }
 
-            return fcProbability;
+            double probability = 0;
+            for (var i = 0; i <= missCount; i++)
+            {
+                probability += Math.Pow(mean, i) * Math.Exp(-mean) / SpecialFunctions.Factorial(i);
+            }
+
+            return probability;
         }
 
         private static double CalculateSkillLevel(IReadOnlyList<HitObject> hitObjects, double circleSize,
-            double clockRate)
+            double clockRate, int missCount)
         {
-            double FcProbabilityMinusThreshold(double x)
+            const double guessLowerBound = 0;
+            const double guessUpperBound = 0.1;
+
+            double ProbabilityMinusThreshold(double skill)
             {
                 const double threshold = 0.5;
-                return CalculateFcProbability(hitObjects, circleSize, clockRate, x) - threshold;
+                return CalculateProbability(hitObjects, circleSize, clockRate, skill, missCount) - threshold;
             }
 
-            double skillLevel = Brent.FindRootExpand(FcProbabilityMinusThreshold, 0, 0.1);
+            double skillLevel = Brent.FindRootExpand(ProbabilityMinusThreshold, guessLowerBound, guessUpperBound);
             return skillLevel;
         }
     }

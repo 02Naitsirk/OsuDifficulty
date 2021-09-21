@@ -36,8 +36,8 @@ namespace OsuDifficulty.Skills
                 return 1;
             }
 
-            double horizontalDeviation = Math.Sqrt(horizontalShift) / (deltaTime * skill);
-            double verticalDeviation = Math.Sqrt(verticalShift) / (deltaTime * skill);
+            double xDeviation = Math.Sqrt(horizontalShift) / (deltaTime * skill);
+            double yDeviation = Math.Sqrt(verticalShift) / (deltaTime * skill);
 
             if (secondLastObject != null)
             {
@@ -46,35 +46,35 @@ namespace OsuDifficulty.Skills
 
                 double deltaTimeRatioMultiplier = 0.5 / deltaTimeRatio + 0.5;
 
-                horizontalDeviation *= deltaTimeRatioMultiplier;
-                verticalDeviation *= deltaTimeRatioMultiplier;
+                xDeviation *= deltaTimeRatioMultiplier;
+                yDeviation *= deltaTimeRatioMultiplier;
             }
             else
             {
-                horizontalDeviation *= 0.7;
-                verticalDeviation *= 0.7;
+                xDeviation *= 0.7;
+                yDeviation *= 0.7;
             }
 
-            if (horizontalDeviation > 0 && verticalDeviation == 0)
+            if (xDeviation > 0 && yDeviation == 0)
             {
-                return SpecialFunctions.Erf(radius / (Math.Sqrt(2) * horizontalDeviation));
+                return SpecialFunctions.Erf(radius / (Math.Sqrt(2) * xDeviation));
             }
 
-            if (verticalDeviation > 0 && horizontalDeviation == 0)
+            if (yDeviation > 0 && xDeviation == 0)
             {
-                return SpecialFunctions.Erf(radius / (Math.Sqrt(2) * verticalDeviation));
+                return SpecialFunctions.Erf(radius / (Math.Sqrt(2) * yDeviation));
             }
 
             double Integrand(double x)
             {
                 return SpecialFunctions.Erf(
-                    Math.Sqrt(0.5 * (radius * radius - x * verticalDeviation * verticalDeviation)) /
-                    horizontalDeviation) * Math.Exp(-0.5 * x) / Math.Sqrt(x);
+                    Math.Sqrt(0.5 * (radius * radius - x * yDeviation * yDeviation)) /
+                    xDeviation) * Math.Exp(-0.5 * x) / Math.Sqrt(x);
             }
 
             const double targetAbsoluteError = 1.0;
             const double intervalBegin = 0;
-            double intervalEnd = radius * radius / verticalDeviation / verticalDeviation;
+            double intervalEnd = radius * radius / yDeviation / yDeviation;
 
             return Integrate.OnClosedInterval(Integrand, intervalBegin, intervalEnd, targetAbsoluteError) /
                    Math.Sqrt(2 * Math.PI);

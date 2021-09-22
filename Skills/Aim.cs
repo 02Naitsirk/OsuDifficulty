@@ -67,17 +67,14 @@ namespace OsuDifficulty.Skills
 
             double Integrand(double x)
             {
-                return SpecialFunctions.Erf(
-                    Math.Sqrt(0.5 * (radius * radius - x * yDeviation * yDeviation)) /
-                    xDeviation) * Math.Exp(-0.5 * x) / Math.Sqrt(x);
+                return SpecialFunctions.Erf(1 / xDeviation * Math.Sqrt(0.5 * (radius * radius - x * x))) *
+                       Math.Exp(-0.5 * x * x / (yDeviation * yDeviation));
             }
 
-            const double targetAbsoluteError = 1.0;
-            const double intervalBegin = 0;
-            double intervalEnd = radius * radius / yDeviation / yDeviation;
+            const int order = 64;
+            double constant = 2 / (yDeviation * Math.Sqrt(2 * Math.PI));
 
-            return Integrate.OnClosedInterval(Integrand, intervalBegin, intervalEnd, targetAbsoluteError) /
-                   Math.Sqrt(2 * Math.PI);
+            return constant * Integrate.GaussLegendre(Integrand, 0, radius, order);
         }
 
         /// <summary>

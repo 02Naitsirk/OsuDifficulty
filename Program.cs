@@ -74,7 +74,7 @@ namespace OsuDifficulty
 
                     var aimStarRatings = new double[9];
                     for (var i = 0; i < aimStarRatings.Length; i++)
-                        aimStarRatings[i] = Aim.CalculateStarRating(hitObjects, circleSizes[i % 3], clockRates[i / 3], missCount);
+                        aimStarRatings[i] = Aim.CalculateStarRating(hitObjects, circleSizes[i % 3], overallDifficulties[i % 3], clockRates[i / 3], missCount);
 
                     var tapStarRatings = new double[9];
                     for (var i = 0; i < tapStarRatings.Length; i++)

@@ -11,19 +11,20 @@ namespace OsuDifficulty.Skills
         private const double Scaling = 295;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
-        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize, double clockRate,
+        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize, double overallDifficulty, double clockRate,
             int missCount)
         {
-            double skillLevel = CalculateSkillLevel(hitObjects, circleSize, clockRate, missCount);
+            double skillLevel = CalculateSkillLevel(hitObjects, circleSize, overallDifficulty, clockRate, missCount);
             double starRating = Scaling * Math.Pow(skillLevel, StarRatingPower);
             return starRating;
         }
 
         private static double CalculateHitProbability(HitObject currentObject, HitObject lastObject,
-            HitObject? secondLastObject, double circleSize, double clockRate, double skill)
+            HitObject? secondLastObject, double circleSize, double overallDifficulty, double clockRate, double skill)
         {
             double deltaTime = (currentObject.Time - lastObject.Time) / clockRate;
             double radius = 54.4 - 4.48 * circleSize;
+            double mehHitWindow = (199.5 - 10 * overallDifficulty) / clockRate;
 
             if (skill == 0 || deltaTime == 0 || radius == 0)
                 return 0;
@@ -36,24 +37,23 @@ namespace OsuDifficulty.Skills
                 return 1;
             }
 
-            double xDeviation = Math.Sqrt(horizontalShift) / (deltaTime * skill);
-            double yDeviation = Math.Sqrt(verticalShift) / (deltaTime * skill);
-
-            if (secondLastObject != null)
+            double effectiveDeltaTime = deltaTime;
+            if (secondLastObject == null)
             {
-                double lastDeltaTime = (lastObject.Time - secondLastObject.Time) / clockRate;
-                double deltaTimeRatio = Math.Max(lastDeltaTime / deltaTime, deltaTime / lastDeltaTime);
-
-                double deltaTimeRatioMultiplier = 0.5 / deltaTimeRatio + 0.5;
-
-                xDeviation *= deltaTimeRatioMultiplier;
-                yDeviation *= deltaTimeRatioMultiplier;
+                effectiveDeltaTime += mehHitWindow;
             }
             else
             {
-                xDeviation *= 0.7;
-                yDeviation *= 0.7;
+                double previousDeltaTime = (lastObject.Time - secondLastObject.Time) / clockRate;
+                double timeDifference = previousDeltaTime - deltaTime;
+                if (timeDifference > 0)
+                {
+                    effectiveDeltaTime += Math.Min(mehHitWindow, timeDifference);
+                }
             }
+
+            double xDeviation = Math.Sqrt(horizontalShift) / (effectiveDeltaTime * skill);
+            double yDeviation = Math.Sqrt(verticalShift) / (effectiveDeltaTime * skill);
 
             if (xDeviation > 0 && yDeviation == 0)
             {
@@ -81,7 +81,7 @@ namespace OsuDifficulty.Skills
         /// Finds the probability of obtaining at most <paramref name="missCount"/> misses given a skill level of <paramref name="skill"></paramref>
         /// </summary>
         private static double CalculateProbability(IReadOnlyList<HitObject> hitObjects, double circleSize,
-            double clockRate, double skill, int missCount)
+            double overallDifficulty, double clockRate, double skill, int missCount)
         {
             if (missCount == 0)
             {
@@ -94,8 +94,7 @@ namespace OsuDifficulty.Skills
                     var secondLastObject = i > 1 ? hitObjects[i - 2] : null;
 
                     double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject,
-                        circleSize,
-                        clockRate, skill);
+                        circleSize, overallDifficulty, clockRate, skill);
 
                     fcProbability *= hitProbability;
                 }
@@ -113,7 +112,7 @@ namespace OsuDifficulty.Skills
                 var secondLastObject = i > 1 ? hitObjects[i - 2] : null;
 
                 double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject, circleSize,
-                    clockRate, skill);
+                    overallDifficulty, clockRate, skill);
 
                 mean += 1 - hitProbability;
             }
@@ -128,7 +127,7 @@ namespace OsuDifficulty.Skills
         }
 
         private static double CalculateSkillLevel(IReadOnlyList<HitObject> hitObjects, double circleSize,
-            double clockRate, int missCount)
+            double overallDifficulty, double clockRate, int missCount)
         {
             const double guessLowerBound = 0;
             const double guessUpperBound = 0.1;
@@ -136,7 +135,7 @@ namespace OsuDifficulty.Skills
             double ProbabilityMinusThreshold(double skill)
             {
                 const double threshold = 0.5;
-                return CalculateProbability(hitObjects, circleSize, clockRate, skill, missCount) - threshold;
+                return CalculateProbability(hitObjects, circleSize, overallDifficulty, clockRate, skill, missCount) - threshold;
             }
 
             double skillLevel = Brent.FindRootExpand(ProbabilityMinusThreshold, guessLowerBound, guessUpperBound);

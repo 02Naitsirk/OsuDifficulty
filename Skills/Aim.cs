@@ -8,7 +8,7 @@ namespace OsuDifficulty.Skills
 {
     public static class Aim
     {
-        private const double Scaling = 305;
+        private const double Scaling = 310;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
         public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize,
@@ -29,15 +29,35 @@ namespace OsuDifficulty.Skills
             if (skill == 0 || deltaTime == 0 || radius == 0)
                 return 0;
 
-            int horizontalShift = Math.Abs(currentObject.X - lastObject.X);
-            int verticalShift = Math.Abs(currentObject.Y - lastObject.Y);
+            // Orientation correction:
+            // Sets the previous HitObject to (0, 0) and sets the current HitObject to (x, 0)
+            // where x is a real number.
 
-            if (horizontalShift == 0 && verticalShift == 0)
-            {
+            int shiftedCurrentX = currentObject.X - lastObject.X;
+            int shiftedCurrentY = currentObject.Y - lastObject.Y;
+
+            // Stacks are assumed to have a 100% hit probability.
+
+            if (shiftedCurrentX == 0 && shiftedCurrentY == 0)
                 return 1;
-            }
+
+            double slope = (double) shiftedCurrentY / shiftedCurrentX;
+            double angle = -Math.Atan(slope);
+
+            double rotatedCurrentX = shiftedCurrentX * Math.Cos(angle) - shiftedCurrentY * Math.Sin(angle);
+            const double rotatedCurrentY = 0;
+
+            double xShift = Math.Abs(rotatedCurrentX);
+            double yShift = Math.Abs(rotatedCurrentY);
+
+            // Use effective delta time for cheesing corrections.
 
             double effectiveDeltaTime = deltaTime;
+
+            // Cheesing correction #1:
+            // The player can tap a note early if the previous deltaTime is greater than the current deltaTime.
+            // The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
+
             if (secondLastObject == null)
             {
                 effectiveDeltaTime += mehHitWindow;
@@ -52,8 +72,8 @@ namespace OsuDifficulty.Skills
                 }
             }
 
-            double xDeviation = Math.Sqrt(horizontalShift) / (effectiveDeltaTime * skill);
-            double yDeviation = Math.Sqrt(verticalShift) / (effectiveDeltaTime * skill);
+            double xDeviation = Math.Sqrt(xShift) / (effectiveDeltaTime * skill);
+            double yDeviation = Math.Sqrt(yShift) / (effectiveDeltaTime * skill);
 
             if (xDeviation > 0 && yDeviation == 0)
             {
@@ -78,7 +98,7 @@ namespace OsuDifficulty.Skills
         }
 
         /// <summary>
-        /// Finds the probability of obtaining at most <paramref name="missCount"/> misses given a skill level of <paramref name="skill"></paramref>
+        /// Finds the expected number of hits given a skill level of <paramref name="skill"/>.
         /// </summary>
         private static double CalculateExpectedHits(IReadOnlyList<HitObject> hitObjects, double circleSize,
             double overallDifficulty, double clockRate, double skill, int missCount)

@@ -8,11 +8,11 @@ namespace OsuDifficulty.Skills
 {
     public static class Aim
     {
-        private const double Scaling = 295;
+        private const double Scaling = 305;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
-        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize, double overallDifficulty, double clockRate,
-            int missCount)
+        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize,
+            double overallDifficulty, double clockRate, int missCount)
         {
             double skillLevel = CalculateSkillLevel(hitObjects, circleSize, overallDifficulty, clockRate, missCount);
             double starRating = Scaling * Math.Pow(skillLevel, StarRatingPower);
@@ -80,65 +80,40 @@ namespace OsuDifficulty.Skills
         /// <summary>
         /// Finds the probability of obtaining at most <paramref name="missCount"/> misses given a skill level of <paramref name="skill"></paramref>
         /// </summary>
-        private static double CalculateProbability(IReadOnlyList<HitObject> hitObjects, double circleSize,
+        private static double CalculateExpectedHits(IReadOnlyList<HitObject> hitObjects, double circleSize,
             double overallDifficulty, double clockRate, double skill, int missCount)
         {
-            if (missCount == 0)
-            {
-                double fcProbability = 1;
-
-                for (var i = 1; i < hitObjects.Count; i++)
-                {
-                    var currentObject = hitObjects[i];
-                    var lastObject = hitObjects[i - 1];
-                    var secondLastObject = i > 1 ? hitObjects[i - 2] : null;
-
-                    double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject,
-                        circleSize, overallDifficulty, clockRate, skill);
-
-                    fcProbability *= hitProbability;
-                }
-
-                return fcProbability;
-            }
-
-            // Use Poisson distribution to approximate a Poisson binomial distribution
-
-            double mean = 0;
+            double expectedHits = 1;
             for (var i = 1; i < hitObjects.Count; i++)
             {
                 var currentObject = hitObjects[i];
                 var lastObject = hitObjects[i - 1];
                 var secondLastObject = i > 1 ? hitObjects[i - 2] : null;
 
-                double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject, circleSize,
-                    overallDifficulty, clockRate, skill);
+                double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject,
+                    circleSize, overallDifficulty, clockRate, skill);
 
-                mean += 1 - hitProbability;
+                expectedHits += hitProbability;
             }
 
-            double probability = 0;
-            for (var i = 0; i <= missCount; i++)
-            {
-                probability += Math.Pow(mean, i) * Math.Exp(-mean) / SpecialFunctions.Factorial(i);
-            }
-
-            return probability;
+            return expectedHits;
         }
 
         private static double CalculateSkillLevel(IReadOnlyList<HitObject> hitObjects, double circleSize,
             double overallDifficulty, double clockRate, int missCount)
         {
             const double guessLowerBound = 0;
-            const double guessUpperBound = 0.1;
+            const double guessUpperBound = 0.01;
 
-            double ProbabilityMinusThreshold(double skill)
+            double ExpectedHitsMinusThreshold(double skill)
             {
-                const double threshold = 0.5;
-                return CalculateProbability(hitObjects, circleSize, overallDifficulty, clockRate, skill, missCount) - threshold;
+                const double threshold = 1.0;
+                return hitObjects.Count -
+                       CalculateExpectedHits(hitObjects, circleSize, overallDifficulty, clockRate, skill, missCount) -
+                       threshold - missCount;
             }
 
-            double skillLevel = Brent.FindRootExpand(ProbabilityMinusThreshold, guessLowerBound, guessUpperBound);
+            double skillLevel = Brent.FindRootExpand(ExpectedHitsMinusThreshold, guessLowerBound, guessUpperBound);
             return skillLevel;
         }
     }

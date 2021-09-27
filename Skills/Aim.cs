@@ -133,8 +133,16 @@ namespace OsuDifficulty.Skills
                        threshold - missCount;
             }
 
-            double skillLevel = Brent.FindRootExpand(ExpectedHitsMinusThreshold, guessLowerBound, guessUpperBound);
-            return skillLevel;
+            try
+            {
+                double skillLevel = Brent.FindRootExpand(ExpectedHitsMinusThreshold, guessLowerBound, guessUpperBound);
+                return skillLevel;
+            }
+            catch (NonConvergenceException e)
+            {
+                Console.WriteLine(e);
+                return double.PositiveInfinity;
+            }
         }
     }
 }

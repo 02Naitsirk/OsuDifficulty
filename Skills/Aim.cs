@@ -8,7 +8,7 @@ namespace OsuDifficulty.Skills
 {
     public static class Aim
     {
-        private const double Scaling = 310;
+        private const double Scaling = 325;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
         public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize,
@@ -19,7 +19,8 @@ namespace OsuDifficulty.Skills
             return starRating;
         }
 
-        private static double CalculateHitProbability(HitObject currentObject, HitObject lastObject,
+        private static double CalculateHitProbability(HitObject? nextObject, HitObject currentObject,
+            HitObject lastObject,
             HitObject? secondLastObject, double circleSize, double overallDifficulty, double clockRate, double skill)
         {
             double deltaTime = (currentObject.Time - lastObject.Time) / clockRate;
@@ -30,8 +31,7 @@ namespace OsuDifficulty.Skills
                 return 0;
 
             // Orientation correction:
-            // Sets the previous HitObject to (0, 0) and sets the current HitObject to (x, 0)
-            // where x is a real number.
+            // Sets the previous HitObject to (0, 0) and sets the current HitObject to (x, 0) where x is a real number.
 
             int shiftedCurrentX = currentObject.X - lastObject.X;
             int shiftedCurrentY = currentObject.Y - lastObject.Y;
@@ -50,17 +50,17 @@ namespace OsuDifficulty.Skills
             double xShift = Math.Abs(rotatedCurrentX);
             double yShift = Math.Abs(rotatedCurrentY);
 
-            // Use effective delta time for cheesing corrections.
-
-            double effectiveDeltaTime = deltaTime;
+            // Add extra time to deltaTime for cheesing corrections.
+            double extraDeltaTime = 0;
 
             // Cheesing correction #1:
-            // The player can tap a note early if the previous deltaTime is greater than the current deltaTime.
+            // The player can tap the previous note early if the previous deltaTime is greater than the current deltaTime.
+            // This kind of cheesing gives the player extra time to hit the current pattern.
             // The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
 
             if (secondLastObject == null)
             {
-                effectiveDeltaTime += mehHitWindow;
+                extraDeltaTime += mehHitWindow;
             }
             else
             {
@@ -68,9 +68,33 @@ namespace OsuDifficulty.Skills
                 double timeDifference = previousDeltaTime - deltaTime;
                 if (timeDifference > 0)
                 {
-                    effectiveDeltaTime += Math.Min(mehHitWindow, timeDifference);
+                    extraDeltaTime += Math.Min(mehHitWindow, timeDifference);
                 }
             }
+
+            // Cheesing correction #2:
+            // The player can tap the current note late if the next deltaTime is greater than the current deltaTime.
+            // This kind of cheesing gives the player extra time to hit the current pattern.
+            // The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
+
+            if (nextObject == null)
+            {
+                extraDeltaTime += mehHitWindow;
+            }
+            else
+            {
+                double nextDeltaTime = (nextObject.Time - currentObject.Time) / clockRate;
+                double timeDifference = nextDeltaTime - deltaTime;
+                if (timeDifference > 0)
+                {
+                    extraDeltaTime += Math.Min(mehHitWindow, timeDifference);
+                }
+            }
+
+            // Maximum amount of extra time is limited to the 50 hit window.
+            extraDeltaTime = Math.Min(mehHitWindow, extraDeltaTime);
+
+            double effectiveDeltaTime = deltaTime + extraDeltaTime;
 
             double xDeviation = Math.Sqrt(xShift) / (effectiveDeltaTime * skill);
             double yDeviation = Math.Sqrt(yShift) / (effectiveDeltaTime * skill);
@@ -106,11 +130,12 @@ namespace OsuDifficulty.Skills
             double expectedHits = 1;
             for (var i = 1; i < hitObjects.Count; i++)
             {
+                var nextObject = i < hitObjects.Count - 1 ? hitObjects[i + 1] : null;
                 var currentObject = hitObjects[i];
                 var lastObject = hitObjects[i - 1];
                 var secondLastObject = i > 1 ? hitObjects[i - 2] : null;
 
-                double hitProbability = CalculateHitProbability(currentObject, lastObject, secondLastObject,
+                double hitProbability = CalculateHitProbability(nextObject, currentObject, lastObject, secondLastObject,
                     circleSize, overallDifficulty, clockRate, skill);
 
                 expectedHits += hitProbability;

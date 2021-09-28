@@ -20,8 +20,8 @@ namespace OsuDifficulty.Skills
         }
 
         private static double CalculateHitProbability(HitObject? nextObject, HitObject currentObject,
-            HitObject lastObject,
-            HitObject? secondLastObject, double circleSize, double overallDifficulty, double clockRate, double skill)
+            HitObject lastObject, HitObject? secondLastObject, double circleSize, double overallDifficulty,
+            double clockRate, double skill)
         {
             double deltaTime = (currentObject.Time - lastObject.Time) / clockRate;
             double radius = 54.4 - 4.48 * circleSize;
@@ -37,7 +37,6 @@ namespace OsuDifficulty.Skills
             int shiftedCurrentY = currentObject.Y - lastObject.Y;
 
             // Stacks are assumed to have a 100% hit probability.
-
             if (shiftedCurrentX == 0 && shiftedCurrentY == 0)
                 return 1;
 
@@ -125,7 +124,7 @@ namespace OsuDifficulty.Skills
         /// Finds the expected number of hits given a skill level of <paramref name="skill"/>.
         /// </summary>
         private static double CalculateExpectedHits(IReadOnlyList<HitObject> hitObjects, double circleSize,
-            double overallDifficulty, double clockRate, double skill, int missCount)
+            double overallDifficulty, double clockRate, double skill)
         {
             double expectedHits = 1;
             for (var i = 1; i < hitObjects.Count; i++)
@@ -152,10 +151,9 @@ namespace OsuDifficulty.Skills
 
             double ExpectedHitsMinusThreshold(double skill)
             {
-                const double threshold = 1.0;
-                return hitObjects.Count -
-                       CalculateExpectedHits(hitObjects, circleSize, overallDifficulty, clockRate, skill, missCount) -
-                       threshold - missCount;
+                int threshold = 1 + missCount;
+                double expectedHits = CalculateExpectedHits(hitObjects, circleSize, overallDifficulty, clockRate, skill);
+                return hitObjects.Count - expectedHits - threshold;
             }
 
             try

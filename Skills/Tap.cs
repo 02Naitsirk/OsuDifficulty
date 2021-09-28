@@ -5,7 +5,7 @@ namespace OsuDifficulty.Skills
 {
     public static class Tap
     {
-        private const double Scaling = 14;
+        private const double Scaling = 13;
         private const double StrainDecay = 1 / Math.E;
 
         public static double CalculateStarRating(IReadOnlyList<HitObject> hitObjects, double overallDifficulty,

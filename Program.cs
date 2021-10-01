@@ -74,7 +74,8 @@ namespace OsuDifficulty
 
                     var aimStarRatings = new double[9];
                     for (var i = 0; i < aimStarRatings.Length; i++)
-                        aimStarRatings[i] = Aim.CalculateStarRating(hitObjects, circleSizes[i % 3], overallDifficulties[i % 3], clockRates[i / 3], missCount);
+                        aimStarRatings[i] = Aim.CalculateStarRating(hitObjects, circleSizes[i % 3],
+                            overallDifficulties[i % 3], clockRates[i / 3], missCount);
 
                     var tapStarRatings = new double[9];
                     for (var i = 0; i < tapStarRatings.Length; i++)
@@ -118,27 +119,14 @@ namespace OsuDifficulty
                         $"Accuracy: {Math.Round(100 * (double) (300 * count300 + 100 * goodCount + 50 * mehCount) / (300 * beatmap.ObjectCount), 2)}%\n");
 
                     Console.WriteLine(
-                        $"{"Mods",s}" +
-                        $"{"Stars",s}" +
-                        $"{"PP",s}" +
-                        $"{"Aim SR",s}" +
-                        $"{"Tap SR",s}" +
-                        $"{"Aim PP",s}" +
-                        $"{"Tap PP",s}" +
-                        $"{"Acc PP",s}");
+                        $"{"Mods",s}{"Stars",s}{"PP",s}{"Aim SR",s}{"Tap SR",s}{"Aim PP",s}{"Tap PP",s}{"Acc PP",s}");
 
-                    for (int i = 0; i < aimStarRatings.Length; i++)
+                    for (var i = 0; i < aimStarRatings.Length; i++)
                     {
                         if (i > 0 && i % 3 == 0) Console.WriteLine();
 
-                        Console.WriteLine($"{mods[i],s}" +
-                                          $"{Math.Round(starRatings[i], 2),s}" +
-                                          $"{Math.Round(performanceValues[i]),s}" +
-                                          $"{Math.Round(aimStarRatings[i], 2),s}" +
-                                          $"{Math.Round(tapStarRatings[i], 2),s}" +
-                                          $"{Math.Round(aimPerformanceValues[i]),s}" +
-                                          $"{Math.Round(tapPerformanceValues[i]),s}" +
-                                          $"{Math.Round(accPerformanceValues[i]),s}");
+                        Console.WriteLine(
+                            $"{mods[i],s}{starRatings[i],s:N}{performanceValues[i],s:N0}{aimStarRatings[i],s:N}{tapStarRatings[i],s:N}{aimPerformanceValues[i],s:N0}{tapPerformanceValues[i],s:N0}{accPerformanceValues[i],s:N0}");
                         if (i == 8) Console.WriteLine();
                     }
 

@@ -1,4 +1,6 @@
 ﻿using System;
+using MathNet.Numerics;
+using OsuDifficulty.Skills;
 
 namespace OsuDifficulty
 {
@@ -20,9 +22,12 @@ namespace OsuDifficulty
             return Math.Pow(starRating, 3);
         }
 
-        public static double CalculateTapPerformance(double starRating)
+        public static double CalculateTapPerformance(double starRating, Beatmap beatmap, double overallDifficulty, double clockRate,
+            int count100, int count50, int countMiss)
         {
-            return Math.Pow(starRating, 3);
+            double deviation = Accuracy.CalculateDeviation(beatmap, overallDifficulty, clockRate, count100, count50, countMiss);
+            double deviationScaling = SpecialFunctions.Erf(13 / (Math.Sqrt(2) * deviation));
+            return deviationScaling * Math.Pow(starRating, 3);
         }
     }
 }

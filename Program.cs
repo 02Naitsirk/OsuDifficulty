@@ -31,7 +31,6 @@ namespace OsuDifficulty
 
                     beatmap.ParseBeatmapFile(beatmapPath);
 
-                    var hitObjects = beatmap.HitObjects;
                     double ezCircleSize = beatmap.CircleSize / 2;
                     double nmCircleSize = beatmap.CircleSize;
                     double hrCircleSize = Math.Min(beatmap.CircleSize * 1.3, 10);
@@ -74,13 +73,13 @@ namespace OsuDifficulty
 
                     var aimStarRatings = new double[9];
                     for (var i = 0; i < aimStarRatings.Length; i++)
-                        aimStarRatings[i] = Aim.CalculateStarRating(hitObjects, circleSizes[i % 3],
+                        aimStarRatings[i] = Aim.CalculateStarRating(beatmap, circleSizes[i % 3],
                             overallDifficulties[i % 3], clockRates[i / 3], missCount);
 
                     var tapStarRatings = new double[9];
                     for (var i = 0; i < tapStarRatings.Length; i++)
                         tapStarRatings[i] =
-                            Tap.CalculateStarRating(hitObjects, overallDifficulties[i % 3], clockRates[i / 3]);
+                            Tap.CalculateStarRating(beatmap, overallDifficulties[i % 3], clockRates[i / 3]);
 
                     var starRatings = new double[9];
                     for (var i = 0; i < starRatings.Length; i++)
@@ -94,7 +93,7 @@ namespace OsuDifficulty
                     var tapPerformanceValues = new double[9];
                     for (var i = 0; i < tapPerformanceValues.Length; i++)
                         tapPerformanceValues[i] =
-                            Difficulty.CalculateTapPerformance(tapStarRatings[i]);
+                            Difficulty.CalculateTapPerformance(tapStarRatings[i], beatmap, overallDifficulties[i % 3], clockRates[i/3], goodCount, mehCount, missCount);
 
                     var accPerformanceValues = new double[9];
                     for (var i = 0; i < accPerformanceValues.Length; i++)

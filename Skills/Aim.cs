@@ -8,13 +8,14 @@ namespace OsuDifficulty.Skills
 {
     public static class Aim
     {
-        private const double Scaling = 325;
+        private const double Scaling = 24.25;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
-        public static double CalculateStarRating(List<HitObject> hitObjects, double circleSize,
+        public static double CalculateStarRating(Beatmap beatmap, double circleSize,
             double overallDifficulty, double clockRate, int missCount)
         {
-            double skillLevel = CalculateSkillLevel(hitObjects, circleSize, overallDifficulty, clockRate, missCount);
+            var hitObjects = beatmap.HitObjects;
+            double skillLevel = CalculateAimDifficulty(hitObjects, circleSize, overallDifficulty, clockRate, missCount);
             double starRating = Scaling * Math.Pow(skillLevel, StarRatingPower);
             return starRating;
         }
@@ -30,24 +31,8 @@ namespace OsuDifficulty.Skills
             if (skill == 0 || deltaTime == 0 || radius == 0)
                 return 0;
 
-            // Orientation correction:
-            // Sets the previous HitObject to (0, 0) and sets the current HitObject to (x, 0) where x is a real number.
-
-            int shiftedCurrentX = currentObject.X - lastObject.X;
-            int shiftedCurrentY = currentObject.Y - lastObject.Y;
-
-            // Stacks are assumed to have a 100% hit probability.
-            if (shiftedCurrentX == 0 && shiftedCurrentY == 0)
-                return 1;
-
-            double slope = (double) shiftedCurrentY / shiftedCurrentX;
-            double angle = -Math.Atan(slope);
-
-            double rotatedCurrentX = shiftedCurrentX * Math.Cos(angle) - shiftedCurrentY * Math.Sin(angle);
-            const double rotatedCurrentY = 0;
-
-            double xShift = Math.Abs(rotatedCurrentX);
-            double yShift = Math.Abs(rotatedCurrentY);
+            double distance = Math.Sqrt(Math.Pow(currentObject.X - lastObject.X, 2) +
+                                        Math.Pow(currentObject.Y - lastObject.Y, 2));
 
             // Add extra time to deltaTime for cheesing corrections.
             double extraDeltaTime = 0;
@@ -92,32 +77,14 @@ namespace OsuDifficulty.Skills
 
             // Maximum amount of extra time is limited to the 50 hit window.
             extraDeltaTime = Math.Min(mehHitWindow, extraDeltaTime);
-
             double effectiveDeltaTime = deltaTime + extraDeltaTime;
 
-            double xDeviation = Math.Sqrt(xShift) / (effectiveDeltaTime * skill);
-            double yDeviation = Math.Sqrt(yShift) / (effectiveDeltaTime * skill);
+            const double b = 100;
+            double deviation = (distance + b) / (effectiveDeltaTime * skill);
 
-            if (xDeviation > 0 && yDeviation == 0)
-            {
-                return SpecialFunctions.Erf(radius / (Math.Sqrt(2) * xDeviation));
-            }
+            double hitProbability = SpecialFunctions.Erf(radius / (Math.Sqrt(2) * deviation));
 
-            if (yDeviation > 0 && xDeviation == 0)
-            {
-                return SpecialFunctions.Erf(radius / (Math.Sqrt(2) * yDeviation));
-            }
-
-            double Integrand(double x)
-            {
-                return SpecialFunctions.Erf(1 / xDeviation * Math.Sqrt(0.5 * (radius * radius - x * x))) *
-                       Math.Exp(-0.5 * x * x / (yDeviation * yDeviation));
-            }
-
-            const int order = 64;
-            double constant = 2 / (yDeviation * Math.Sqrt(2 * Math.PI));
-
-            return constant * Integrate.GaussLegendre(Integrand, 0, radius, order);
+            return hitProbability;
         }
 
         /// <summary>
@@ -143,16 +110,17 @@ namespace OsuDifficulty.Skills
             return expectedHits;
         }
 
-        private static double CalculateSkillLevel(IReadOnlyList<HitObject> hitObjects, double circleSize,
+        private static double CalculateAimDifficulty(IReadOnlyList<HitObject> hitObjects, double circleSize,
             double overallDifficulty, double clockRate, int missCount)
         {
             const double guessLowerBound = 0;
-            const double guessUpperBound = 0.01;
+            const double guessUpperBound = 1;
 
             double ExpectedHitsMinusThreshold(double skill)
             {
                 int threshold = 1 + missCount;
-                double expectedHits = CalculateExpectedHits(hitObjects, circleSize, overallDifficulty, clockRate, skill);
+                double expectedHits =
+                    CalculateExpectedHits(hitObjects, circleSize, overallDifficulty, clockRate, skill);
                 return hitObjects.Count - expectedHits - threshold;
             }
 

@@ -5,7 +5,7 @@ namespace OsuDifficulty.Skills
 {
     public static class Tap
     {
-        private const double Scaling = 12;
+        private const double Scaling = 14;
         private const double StrainDecay = 1 / Math.E;
 
         public static double CalculateStarRating(Beatmap beatmap, double overallDifficulty, double clockRate)

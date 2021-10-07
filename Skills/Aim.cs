@@ -8,7 +8,7 @@ namespace OsuDifficulty.Skills
 {
     public static class Aim
     {
-        private const double Scaling = 24.25;
+        private const double Scaling = 24;
         private static readonly double StarRatingPower = Math.Log(1.4) / Math.Log(1.5);
 
         public static double CalculateStarRating(Beatmap beatmap, double circleSize,
@@ -79,11 +79,19 @@ namespace OsuDifficulty.Skills
             extraDeltaTime = Math.Min(mehHitWindow, extraDeltaTime);
             double effectiveDeltaTime = deltaTime + extraDeltaTime;
 
-            const double b = 100;
-            double deviation = (distance + b) / (effectiveDeltaTime * skill);
+            double deviation;
+            const double k = 100;
+
+            if (distance >= 2 * radius)
+            {
+                deviation = (distance + k) / (skill * effectiveDeltaTime);
+            }
+            else
+            {
+                deviation = distance * (2 * radius + k) / (2 * radius * skill * effectiveDeltaTime);
+            }
 
             double hitProbability = SpecialFunctions.Erf(radius / (Math.Sqrt(2) * deviation));
-
             return hitProbability;
         }
 

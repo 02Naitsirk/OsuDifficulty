@@ -25,7 +25,7 @@ namespace OsuDifficulty.Skills
             double greatHitWindow = (79.5 - 6 * overallDifficulty) / clockRate;
             double deviation = greatHitWindow / (Math.Sqrt(2) *
                                                  SpecialFunctions.ErfInv((count300 + prior) /
-                                                                         (beatmap.CircleCount + 2 * prior)));
+                                                                         (beatmap.CircleCount - countMiss + 2 * prior)));
             return deviation;
         }
     }

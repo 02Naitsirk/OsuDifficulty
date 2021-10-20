@@ -24,6 +24,8 @@ namespace OsuDifficulty.Skills
             HitObject lastObject, HitObject? secondLastObject, double circleSize, double overallDifficulty,
             double clockRate, double skill)
         {
+            double xDeviation;
+
             double deltaTime = (currentObject.Time - lastObject.Time) / clockRate;
             double radius = 54.4 - 4.48 * circleSize;
             double mehHitWindow = (199.5 - 10 * overallDifficulty) / clockRate;
@@ -34,13 +36,18 @@ namespace OsuDifficulty.Skills
             double distance = Math.Sqrt(Math.Pow(currentObject.X - lastObject.X, 2) +
                                         Math.Pow(currentObject.Y - lastObject.Y, 2));
 
+            if (distance == 0)
+                return 1;
+
             // Add extra time to deltaTime for cheesing corrections.
             double extraDeltaTime = 0;
 
-            // Cheesing correction #1:
-            // The player can tap the previous note early if the previous deltaTime is greater than the current deltaTime.
-            // This kind of cheesing gives the player extra time to hit the current pattern.
-            // The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
+            /*
+             * Correction #1: Early taps.
+             * The player can tap the current note early if the previous deltaTime is greater than the current deltaTime.
+             * This kind of cheesing gives the player extra time to hit the current pattern.
+             * The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
+             */
 
             if (secondLastObject == null)
             {
@@ -56,10 +63,12 @@ namespace OsuDifficulty.Skills
                 }
             }
 
-            // Cheesing correction #2:
-            // The player can tap the current note late if the next deltaTime is greater than the current deltaTime.
-            // This kind of cheesing gives the player extra time to hit the current pattern.
-            // The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
+            /*
+             * Correction #2: Late taps.
+             * The player can tap the current note late if the next deltaTime is greater than the current deltaTime.
+             * This kind of cheesing gives the player extra time to hit the current pattern.
+             * The maximum amount of extra time is the 50 hit window or the time difference, whichever is lower.
+             */
 
             if (nextObject == null)
             {
@@ -75,24 +84,41 @@ namespace OsuDifficulty.Skills
                 }
             }
 
-            // Maximum amount of extra time is limited to the 50 hit window.
             extraDeltaTime = Math.Min(mehHitWindow, extraDeltaTime);
             double effectiveDeltaTime = deltaTime + extraDeltaTime;
 
-            double deviation;
             const double k = 100;
 
             if (distance >= 2 * radius)
             {
-                deviation = (distance + k) / (skill * effectiveDeltaTime);
+                xDeviation = (distance + k) / (skill * effectiveDeltaTime);
             }
             else
             {
-                deviation = distance * (2 * radius + k) / (2 * radius * skill * effectiveDeltaTime);
+                xDeviation = distance * (2 * radius + k) / (2 * radius * skill * effectiveDeltaTime);
             }
 
-            double hitProbability = SpecialFunctions.Erf(radius / (Math.Sqrt(2) * deviation));
-            return hitProbability;
+            /*
+             * Correction #3: Rotation
+             * Rotation tends to change not the x deviation, but the y deviation.
+             * When the rotation is close to 0 or 90 degrees, the y deviation is close to 0.
+             * When the rotation approaches 45 degrees, the y deviation is around 0.75 * the x deviation.
+             */
+
+            double rotation = Math.Atan((double) (currentObject.Y - lastObject.Y) / (currentObject.X - lastObject.X));
+            double rotationMultiplier = Math.Abs(Math.Sin(2 * rotation));
+            double yDeviation = 0.75 * xDeviation * rotationMultiplier;
+
+            /*
+             * To compute the exact hit probability, a definite integral algorithm is required.
+             * This definite algorithm is too slow for our needs, even with low precision.
+             * So, we will approximate by multiplying two normal CDFs.
+             * This has the effect of treating circles as squares, but it's a good, extremely fast approximation.
+             */
+
+            double xHitProbability = SpecialFunctions.Erf(radius / (Math.Sqrt(2) * xDeviation));
+            double yHitProbability = yDeviation > 0 ? SpecialFunctions.Erf(radius / (Math.Sqrt(2) * yDeviation)) : 1;
+            return xHitProbability * yHitProbability;
         }
 
         /// <summary>
@@ -122,7 +148,7 @@ namespace OsuDifficulty.Skills
             double overallDifficulty, double clockRate, int missCount)
         {
             const double guessLowerBound = 0;
-            const double guessUpperBound = 1;
+            const double guessUpperBound = 0.1;
 
             double ExpectedHitsMinusThreshold(double skill)
             {
@@ -134,12 +160,12 @@ namespace OsuDifficulty.Skills
 
             try
             {
-                double skillLevel = Brent.FindRootExpand(ExpectedHitsMinusThreshold, guessLowerBound, guessUpperBound);
+                double skillLevel =
+                    Bisection.FindRootExpand(ExpectedHitsMinusThreshold, guessLowerBound, guessUpperBound);
                 return skillLevel;
             }
             catch (NonConvergenceException e)
             {
-                Console.WriteLine(e);
                 return double.PositiveInfinity;
             }
         }
